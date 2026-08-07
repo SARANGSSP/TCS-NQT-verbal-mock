@@ -73,6 +73,17 @@
   function showStage(name){
     Object.values(stages).forEach(s => s.classList.remove('active'));
     stages[name].classList.add('active');
+    if(name === 'reading'){
+      document.body.classList.add('reading-active');
+    } else {
+      document.body.classList.remove('reading-active');
+    }
+    const hintsBox = document.getElementById('hintsBox');
+    if(name === 'writing'){
+      hintsBox.classList.add('visible');
+    } else {
+      hintsBox.classList.remove('visible');
+    }
   }
 
   let originalPassage = '';
@@ -293,6 +304,31 @@
     }, 1000);
   }
 
+  function extractKeywords(passage){
+    const words = passage.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'']/g, "").split(/\s+/);
+    const stopwords = new Set([
+      'the', 'and', 'that', 'with', 'from', 'this', 'these', 'their', 'there', 'about', 
+      'which', 'would', 'should', 'could', 'their', 'they', 'them', 'will', 'have', 'has', 
+      'had', 'been', 'were', 'was', 'are', 'context', 'passage', 'candidate', 'original', 
+      'topic', 'first', 'second', 'third', 'after', 'before', 'between', 'under', 'through',
+      'during', 'without', 'because', 'although', 'though', 'since', 'until', 'while'
+    ]);
+    const candidates = [];
+    const seen = new Set();
+    words.forEach(w => {
+      const clean = w.toLowerCase().trim();
+      if(clean.length >= 6 && !stopwords.has(clean) && !seen.has(clean) && !/^\d+$/.test(clean)){
+        seen.add(clean);
+        candidates.push(w);
+      }
+    });
+    candidates.sort((a, b) => b.length - a.length);
+    while(candidates.length < 3){
+      candidates.push('NQT Drill');
+    }
+    return candidates.slice(0, 3);
+  }
+
   function beginWriting(){
     showStage('writing');
     const ta = document.getElementById('rewriteInput');
@@ -300,6 +336,22 @@
     document.getElementById('wordCount').textContent = '0 words';
     ta.focus();
     ta.addEventListener('input', updateWordCount);
+
+    const hintsBox = document.getElementById('hintsBox');
+    const hint1 = document.getElementById('hint1');
+    const hint2 = document.getElementById('hint2');
+    const hint3 = document.getElementById('hint3');
+
+    // Reset hints UI
+    hintsBox.classList.remove('visible');
+    hint1.classList.remove('reveal');
+    hint2.classList.remove('reveal');
+    hint3.classList.remove('reveal');
+    hint1.textContent = '';
+    hint2.textContent = '';
+    hint3.textContent = '';
+
+    const keywords = extractKeywords(originalPassage);
 
     let remaining = WRITE_SECONDS;
     const progressEl = document.getElementById('writeRingProgress');
@@ -310,6 +362,25 @@
     writeInterval = setInterval(() => {
       remaining--;
       updateRing(progressEl, numEl, wrapEl, Math.max(remaining,0), WRITE_SECONDS);
+      
+      // Reveal keywords based on remaining time (total: 90s)
+      // 30s elapsed -> remaining = 60s
+      if(remaining === 60){
+        hintsBox.classList.add('visible');
+        hint1.textContent = keywords[0];
+        hint1.classList.add('reveal');
+      }
+      // 45s elapsed -> remaining = 45s
+      if(remaining === 45){
+        hint2.textContent = keywords[1];
+        hint2.classList.add('reveal');
+      }
+      // 60s elapsed -> remaining = 30s
+      if(remaining === 30){
+        hint3.textContent = keywords[2];
+        hint3.classList.add('reveal');
+      }
+
       if(remaining <= 0){
         clearInterval(writeInterval);
         finishWriting();
@@ -411,6 +482,37 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
     btnStart.disabled = false;
     btnStart.textContent = 'Generate passage & start';
     showStage('setup');
+  });
+
+  // Disable copy/cut/contextmenu/selectstart/dragstart globally during reading stage
+  ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(evt => {
+    document.addEventListener(evt, e => {
+      if (document.body.classList.contains('reading-active')) {
+        e.preventDefault();
+      }
+    });
+  });
+
+  // Block keyboard copy/cut/select-all commands (Ctrl+C, Cmd+C, etc.) during reading stage
+  document.addEventListener('keydown', e => {
+    if (document.body.classList.contains('reading-active')) {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+      }
+    }
+  });
+
+  // Disable copy/cut/contextmenu/selectstart/dragstart on passageBox specifically to be extra safe
+  const passageBox = document.getElementById('passageBox');
+  ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(evt => {
+    passageBox.addEventListener(evt, e => e.preventDefault());
+  });
+
+  // Disable paste/drop on rewriteInput
+  const rewriteInput = document.getElementById('rewriteInput');
+  ['paste', 'drop'].forEach(evt => {
+    rewriteInput.addEventListener(evt, e => e.preventDefault());
   });
 
 })();
