@@ -1,0 +1,23 @@
+{
+  "name": "primary",
+  "version": "1.0.0",
+  "description": "A practice tool for the TCS NQT \"Rewrite Passage\" round: read an AI-generated paragraph for 30 seconds, it disappears, you get 90 seconds to rewrite it from memory, then it's graded on vocabulary relevancy, sentence completeness, and content coverage.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SARANGSSP/TCS-NQT-verbal-mock.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SARANGSSP/TCS-NQT-verbal-mock/issues"
+  },
+  "homepage": "https://github.com/SARANGSSP/TCS-NQT-verbal-mock#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
