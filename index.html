@@ -26,28 +26,38 @@
 
         <!-- SETUP -->
         <div id="stage-setup" class="stage active">
+          <div class="groq-help">
+            <div class="groq-help-title">You'll need a free Groq API key</div>
+            <ol class="groq-help-steps">
+              <li>
+                Go to
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noopener"
+                  >console.groq.com/keys</a
+                >
+                and sign in (Google/GitHub/email — no card needed).
+              </li>
+              <li>Click <code>Create API Key</code>, give it any name.</li>
+              <li>
+                Copy the key (starts with <code>gsk_</code>) and paste it
+                below. Groq's free tier is plenty for this drill.
+              </li>
+            </ol>
+          </div>
           <div class="field">
             <label for="apiKey">Groq API key</label>
             <input type="password" id="apiKey" placeholder="gsk_..." />
             <p class="hint">
-              Stays in this browser tab only, never saved or sent anywhere but
-              Groq. Get a free key at
-              <a
-                href="https://console.groq.com/keys"
-                target="_blank"
-                rel="noopener"
-                >console.groq.com/keys</a
-              >.
+              Stays in this browser tab only, never saved or sent anywhere
+              but Groq.
             </p>
           </div>
           <div class="row2">
             <div class="field">
-              <label for="topic">Topic (optional)</label>
-              <input
-                type="text"
-                id="topic"
-                placeholder="e.g. workplace, tech, general"
-              />
+              <label for="topic">Topic</label>
+              <select id="topic"></select>
             </div>
             <div class="field">
               <label for="model"
@@ -171,6 +181,13 @@
               </div>
             </div>
             <div class="metric">
+              <div class="m-label">Structure (opening/points/conclusion)</div>
+              <div class="m-val" id="mStructure">–</div>
+              <div class="bar">
+                <span id="barStructure" style="width: 0%"></span>
+              </div>
+            </div>
+            <div class="metric metric-wide">
               <div class="m-label">Words written</div>
               <div class="m-val" id="mWords">–</div>
             </div>
