@@ -1,149 +1,214 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speed Write Drill — Rewrite Round Practice</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-<div class="sheet">
-  <div class="clip"></div>
-  <div class="inner">
-
-    <div class="eyebrow"><span class="dot"></span>TCS NQT · Rewrite Round Drill</div>
-    <h1>Speed Write Drill</h1>
-    <p class="sub">Read a passage for 30 seconds. It disappears. You get 90 seconds to rewrite it from memory. Then it's graded.</p>
-
-    <!-- SETUP -->
-    <div id="stage-setup" class="stage active">
-      <div class="field">
-        <label for="apiKey">Groq API key</label>
-        <input type="password" id="apiKey" placeholder="gsk_...">
-        <p class="hint">Stays in this browser tab only, never saved or sent anywhere but Groq. Get a free key at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>.</p>
-      </div>
-      <div class="row2">
-        <div class="field">
-          <label for="topic">Topic (optional)</label>
-          <input type="text" id="topic" placeholder="e.g. workplace, tech, general">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speed Write Drill — Rewrite Round Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Caveat:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="sheet">
+      <div class="clip"></div>
+      <div class="inner">
+        <div class="eyebrow">
+          <span class="dot"></span>TCS NQT · Rewrite Round Drill
         </div>
-        <div class="field">
-          <label for="model">Model</label>
-          <select id="model">
-            <option value="openai/gpt-oss-120b" selected>openai/gpt-oss-120b</option>
-            <option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
-            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-            <option value="qwen/qwen3-32b">qwen/qwen3-32b</option>
-          </select>
+        <h1>Speed Write Drill</h1>
+        <p class="sub">
+          Read a passage for 30 seconds. It disappears. You get 90 seconds to
+          rewrite it from memory. Then it's graded.
+        </p>
+
+        <!-- SETUP -->
+        <div id="stage-setup" class="stage active">
+          <div class="field">
+            <label for="apiKey">Groq API key</label>
+            <input type="password" id="apiKey" placeholder="gsk_..." />
+            <p class="hint">
+              Stays in this browser tab only, never saved or sent anywhere but
+              Groq. Get a free key at
+              <a
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noopener"
+                >console.groq.com/keys</a
+              >.
+            </p>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="topic">Topic (optional)</label>
+              <input
+                type="text"
+                id="topic"
+                placeholder="e.g. workplace, tech, general"
+              />
+            </div>
+            <div class="field">
+              <label for="model"
+                >Model
+                <span class="reload-link" id="reloadModels"
+                  >reload list</span
+                ></label
+              >
+              <select id="model">
+                <option value="openai/gpt-oss-120b" selected>
+                  openai/gpt-oss-120b
+                </option>
+                <option value="openai/gpt-oss-20b">openai/gpt-oss-20b</option>
+                <option value="llama-3.3-70b-versatile">
+                  llama-3.3-70b-versatile
+                </option>
+                <option value="qwen/qwen3-32b">qwen/qwen3-32b</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-primary" id="btnStart">
+            Generate passage & start
+          </button>
+          <div class="error" id="setupError"></div>
         </div>
+
+        <!-- READING -->
+        <div id="stage-reading" class="stage">
+          <div class="timer-wrap" id="readTimerWrap">
+            <div class="ring-box">
+              <svg class="ring" width="76" height="76" viewBox="0 0 76 76">
+                <circle class="ring-track" cx="38" cy="38" r="32"></circle>
+                <circle
+                  class="ring-progress"
+                  id="readRingProgress"
+                  cx="38"
+                  cy="38"
+                  r="32"
+                  stroke-dasharray="201"
+                  stroke-dashoffset="0"
+                ></circle>
+              </svg>
+              <div class="ring-num" id="readRingNum">30</div>
+            </div>
+            <div>
+              <div class="timer-label">Round 1 · Read</div>
+              <div class="timer-title">Memorise the passage</div>
+            </div>
+          </div>
+          <div class="passage-box" id="passageBox">
+            <span class="loading-line">Generating your passage…</span>
+          </div>
+        </div>
+
+        <!-- WRITING -->
+        <div id="stage-writing" class="stage">
+          <div class="timer-wrap" id="writeTimerWrap">
+            <div class="ring-box">
+              <svg class="ring" width="76" height="76" viewBox="0 0 76 76">
+                <circle class="ring-track" cx="38" cy="38" r="32"></circle>
+                <circle
+                  class="ring-progress"
+                  id="writeRingProgress"
+                  cx="38"
+                  cy="38"
+                  r="32"
+                  stroke-dasharray="201"
+                  stroke-dashoffset="0"
+                ></circle>
+              </svg>
+              <div class="ring-num" id="writeRingNum">90</div>
+            </div>
+            <div>
+              <div class="timer-label">Round 2 · Rewrite</div>
+              <div class="timer-title">Type it from memory</div>
+            </div>
+          </div>
+          <textarea
+            id="rewriteInput"
+            placeholder="Start typing what you remember, as close to complete sentences as you can…"
+          ></textarea>
+          <div class="wordcount" id="wordCount">0 words</div>
+          <div class="actions">
+            <button class="btn-ghost" id="btnGiveUp">Submit early</button>
+          </div>
+        </div>
+
+        <!-- SCORING (loading) -->
+        <div id="stage-scoring" class="stage">
+          <p class="loading-line">Grading your rewrite against the original…</p>
+        </div>
+
+        <!-- RESULT -->
+        <div id="stage-result" class="stage">
+          <div class="score-hero">
+            <span class="score-num" id="scoreNum">–</span>
+            <span class="score-out">/ 10</span>
+          </div>
+          <div class="score-tag" id="scoreTag">OVERALL SCORE</div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="m-label">Vocabulary relevancy</div>
+              <div class="m-val" id="mVocab">–</div>
+              <div class="bar">
+                <span id="barVocab" style="width: 0%"></span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="m-label">Sentence completeness</div>
+              <div class="m-val" id="mSentence">–</div>
+              <div class="bar">
+                <span id="barSentence" style="width: 0%"></span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="m-label">Content coverage</div>
+              <div class="m-val" id="mCoverage">–</div>
+              <div class="bar">
+                <span id="barCoverage" style="width: 0%"></span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="m-label">Words written</div>
+              <div class="m-val" id="mWords">–</div>
+            </div>
+          </div>
+
+          <div class="feedback-box">
+            <span class="f-title">Examiner's note</span>
+            <span id="feedbackText"></span>
+            <ul class="missed" id="missedList"></ul>
+          </div>
+
+          <span class="compare-toggle" id="compareToggle"
+            >show original vs. your rewrite</span
+          >
+          <div class="compare" id="compareBox">
+            <div class="compare-block">
+              <b>Original passage</b><span id="origText"></span>
+            </div>
+            <div class="compare-block">
+              <b>Your rewrite</b><span id="yourText"></span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="btnAgain">
+              Run another passage
+            </button>
+          </div>
+        </div>
+
+        <div class="error" id="runError"></div>
+        <footer class="note">
+          Passages and grading are AI-generated — treat scores as practice
+          signal, not an official TCS result.
+        </footer>
       </div>
-      <button class="btn-primary" id="btnStart">Generate passage & start</button>
-      <div class="error" id="setupError"></div>
     </div>
 
-    <!-- READING -->
-    <div id="stage-reading" class="stage">
-      <div class="timer-wrap" id="readTimerWrap">
-        <div class="ring-box">
-          <svg class="ring" width="76" height="76" viewBox="0 0 76 76">
-            <circle class="ring-track" cx="38" cy="38" r="32"></circle>
-            <circle class="ring-progress" id="readRingProgress" cx="38" cy="38" r="32" stroke-dasharray="201" stroke-dashoffset="0"></circle>
-          </svg>
-          <div class="ring-num" id="readRingNum">30</div>
-        </div>
-        <div>
-          <div class="timer-label">Round 1 · Read</div>
-          <div class="timer-title">Memorise the passage</div>
-        </div>
-      </div>
-      <div class="passage-box" id="passageBox">
-        <span class="loading-line">Generating your passage…</span>
-      </div>
-    </div>
-
-    <!-- WRITING -->
-    <div id="stage-writing" class="stage">
-      <div class="timer-wrap" id="writeTimerWrap">
-        <div class="ring-box">
-          <svg class="ring" width="76" height="76" viewBox="0 0 76 76">
-            <circle class="ring-track" cx="38" cy="38" r="32"></circle>
-            <circle class="ring-progress" id="writeRingProgress" cx="38" cy="38" r="32" stroke-dasharray="201" stroke-dashoffset="0"></circle>
-          </svg>
-          <div class="ring-num" id="writeRingNum">90</div>
-        </div>
-        <div>
-          <div class="timer-label">Round 2 · Rewrite</div>
-          <div class="timer-title">Type it from memory</div>
-        </div>
-      </div>
-      <textarea id="rewriteInput" placeholder="Start typing what you remember, as close to complete sentences as you can…"></textarea>
-      <div class="wordcount" id="wordCount">0 words</div>
-      <div class="actions">
-        <button class="btn-ghost" id="btnGiveUp">Submit early</button>
-      </div>
-    </div>
-
-    <!-- SCORING (loading) -->
-    <div id="stage-scoring" class="stage">
-      <p class="loading-line">Grading your rewrite against the original…</p>
-    </div>
-
-    <!-- RESULT -->
-    <div id="stage-result" class="stage">
-      <div class="score-hero">
-        <span class="score-num" id="scoreNum">–</span>
-        <span class="score-out">/ 10</span>
-      </div>
-      <div class="score-tag" id="scoreTag">OVERALL SCORE</div>
-
-      <div class="metric-grid">
-        <div class="metric">
-          <div class="m-label">Vocabulary relevancy</div>
-          <div class="m-val" id="mVocab">–</div>
-          <div class="bar"><span id="barVocab" style="width:0%"></span></div>
-        </div>
-        <div class="metric">
-          <div class="m-label">Sentence completeness</div>
-          <div class="m-val" id="mSentence">–</div>
-          <div class="bar"><span id="barSentence" style="width:0%"></span></div>
-        </div>
-        <div class="metric">
-          <div class="m-label">Content coverage</div>
-          <div class="m-val" id="mCoverage">–</div>
-          <div class="bar"><span id="barCoverage" style="width:0%"></span></div>
-        </div>
-        <div class="metric">
-          <div class="m-label">Words written</div>
-          <div class="m-val" id="mWords">–</div>
-        </div>
-      </div>
-
-      <div class="feedback-box">
-        <span class="f-title">Examiner's note</span>
-        <span id="feedbackText"></span>
-        <ul class="missed" id="missedList"></ul>
-      </div>
-
-      <span class="compare-toggle" id="compareToggle">show original vs. your rewrite</span>
-      <div class="compare" id="compareBox">
-        <div class="compare-block"><b>Original passage</b><span id="origText"></span></div>
-        <div class="compare-block"><b>Your rewrite</b><span id="yourText"></span></div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-primary" id="btnAgain">Run another passage</button>
-      </div>
-    </div>
-
-    <div class="error" id="runError"></div>
-    <footer class="note">Passages and grading are AI-generated — treat scores as practice signal, not an official TCS result.</footer>
-  </div>
-</div>
-
-<script src="script.js"></script>
-
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
