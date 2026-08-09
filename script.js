@@ -229,7 +229,7 @@
     const avoidBlock = avoidList.length
       ? `\n\nDo NOT reuse any of these passages you (or another request) already generated for this reader — write something with a genuinely different angle, examples, and opening sentence, even if the topic is the same:\n${avoidList.map((p,i) => `${i+1}. """${p}"""`).join('\n')}`
       : '';
-    return `You are creating practice material for the TCS NQT exam's "Rewrite Passage" round. Write a single self-contained paragraph of 100-130 words on the topic of "${topic}". Make it moderately formal, information-dense with 4-6 distinct factual or logical points a reader would need to recall, written in clear complete sentences with a brief opening/context sentence, a body of key points, and a short concluding sentence that wraps up the idea. Output ONLY the paragraph text — no title, no quotes, no preamble, no markdown.${avoidBlock}`;
+    return `You are creating practice material for the TCS NQT exam's "Rewrite Passage" round. Write a single self-contained paragraph of 100-130 words on the topic of "${topic}". Make it moderately formal, information-dense with 4-6 distinct factual or logical points a reader would need to recall, written in clear complete sentences with a brief opening/context sentence, a body of key points, and a short concluding sentence that wraps up the idea. Also remember that the reader only has 30 seconds to read the complete paragraph so it caanot be longer than 5-6 lines. Output ONLY the paragraph text — no title, no quotes, no preamble, no markdown.${avoidBlock}`;
   }
 
   async function generateUniquePassage(apiKey, model, topic){
