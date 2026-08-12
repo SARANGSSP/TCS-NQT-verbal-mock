@@ -12,7 +12,8 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="sheet">
+    <div class="app-container">
+      <div class="sheet">
       <div class="clip"></div>
       <div class="inner">
         <div class="eyebrow">
@@ -26,6 +27,10 @@
 
         <!-- SETUP -->
         <div id="stage-setup" class="stage active">
+          <div class="mode-tabs">
+            <button class="mode-tab active" id="modeTabRewrite" data-mode="rewrite" type="button">Rewrite Passage</button>
+            <button class="mode-tab" id="modeTabFitb" data-mode="fitb" type="button">Fill in the Blanks</button>
+          </div>
           <div class="groq-help">
             <div class="groq-help-title">You'll need a free Groq API key</div>
             <ol class="groq-help-steps">
@@ -82,6 +87,13 @@
             Generate passage & start
           </button>
           <div class="error" id="setupError"></div>
+
+          <div class="lb-box lb-box-home">
+            <div class="lb-title">Leaderboard</div>
+            <div class="lb-list" data-lb-list="home">
+              <div class="lb-empty">Loading leaderboard…</div>
+            </div>
+          </div>
         </div>
 
         <!-- READING -->
@@ -145,9 +157,69 @@
           </div>
         </div>
 
+        <!-- FILL IN THE BLANKS -->
+        <div id="stage-fitb" class="stage">
+          <div class="timer-wrap" id="fitbTimerWrap">
+            <div class="ring-box">
+              <svg class="ring" width="76" height="76" viewBox="0 0 76 76">
+                <circle class="ring-track" cx="38" cy="38" r="32"></circle>
+                <circle
+                  class="ring-progress"
+                  id="fitbRingProgress"
+                  cx="38"
+                  cy="38"
+                  r="32"
+                  stroke-dasharray="201"
+                  stroke-dashoffset="0"
+                ></circle>
+              </svg>
+              <div class="ring-num" id="fitbRingNum">25</div>
+            </div>
+            <div>
+              <div class="timer-label" id="fitbProgressLabel">Question 1 of 25</div>
+              <div class="timer-title">Fill in the blank</div>
+            </div>
+          </div>
+          <div class="fitb-sentence-box" id="fitbSentenceBox">
+            <span class="loading-line">Generating your 25 questions…</span>
+          </div>
+          <div class="field" style="margin-top: 16px">
+            <label for="fitbAnswerInput">Your answer</label>
+            <input
+              type="text"
+              id="fitbAnswerInput"
+              placeholder="Type the missing word or phrase…"
+              autocomplete="off"
+            />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" id="btnFitbNext">Submit &amp; next</button>
+          </div>
+        </div>
+
+        <!-- FITB RESULT -->
+        <div id="stage-fitb-result" class="stage">
+          <div class="score-hero">
+            <span class="score-num" id="fitbScoreNum">–</span>
+            <span class="score-out">/ 25</span>
+          </div>
+          <div class="score-tag">FILL IN THE BLANKS — CONTEXTUAL VOCABULARY</div>
+
+          <div class="feedback-box" id="fitbFeedbackBox" style="display: none">
+            <span class="f-title">Examiner's note</span>
+            <span id="fitbFeedbackText"></span>
+          </div>
+
+          <div class="fitb-review" id="fitbReview"></div>
+
+          <div class="actions">
+            <button class="btn-primary" id="btnFitbAgain">Run another set</button>
+          </div>
+        </div>
+
         <!-- SCORING (loading) -->
         <div id="stage-scoring" class="stage">
-          <p class="loading-line">Grading your rewrite against the original…</p>
+          <p class="loading-line" id="scoringLoadingText">Grading your rewrite against the original…</p>
         </div>
 
         <!-- RESULT -->
@@ -199,6 +271,23 @@
             <ul class="missed" id="missedList"></ul>
           </div>
 
+          <div class="lb-box" id="lbBox">
+            <div class="lb-title">Challenge your friends</div>
+            <div class="lb-submit-row">
+              <input
+                type="text"
+                id="playerName"
+                placeholder="Your name"
+                maxlength="24"
+              />
+              <button class="btn-ghost" id="btnSubmitScore">
+                Post to leaderboard
+              </button>
+            </div>
+            <p class="lb-status" id="lbStatus"></p>
+            <div class="lb-list" id="lbList" data-lb-list="result"></div>
+          </div>
+
           <span class="compare-toggle" id="compareToggle"
             >show original vs. your rewrite</span
           >
@@ -226,6 +315,20 @@
       </div>
     </div>
 
-    <script src="script.js"></script>
-  </body>
+    <div class="hints-sidebar" id="hintsBox">
+      <div class="hint-title-handwritten">Key hints</div>
+      <div class="hint-word-handwritten" id="hint1"></div>
+      <div class="hint-word-handwritten" id="hint2"></div>
+      <div class="hint-word-handwritten" id="hint3"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="script.js"></script>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
 </html>
