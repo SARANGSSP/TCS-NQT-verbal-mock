@@ -189,7 +189,8 @@
       },
       body: JSON.stringify({
         model: model,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 4096
       })
     });
     if (!res.ok) {
@@ -198,8 +199,12 @@
       throw new Error(`Groq request failed (${res.status}). ${detail}`);
     }
     const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content || '';
+    const choice = data?.choices?.[0];
+    const text = choice?.message?.content || '';
     if (!text) throw new Error('Empty response from Groq.');
+    if (choice?.finish_reason === 'length') {
+      throw new Error('Groq response was cut off before it finished (hit the token limit). Try again, or pick a different model.');
+    }
     return text.trim();
   }
 
@@ -249,7 +254,7 @@
     currentMode = mode;
     modeTabRewrite.classList.toggle('active', mode === 'rewrite');
     modeTabFitb.classList.toggle('active', mode === 'fitb');
-    btnStart.textContent = mode === 'fitb' ? 'Generate 25 blanks & start' : 'Generate passage & start';
+    btnStart.textContent = mode === 'fitb' ? 'Generate 15 blanks & start' : 'Generate passage & start';
     setError(document.getElementById('setupError'), '');
   }
   modeTabRewrite.addEventListener('click', () => setMode('rewrite'));
@@ -682,7 +687,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
   // ---- Fill in the Blanks (contextual, no options) round ----
   // =========================================================
   const FITB_QUESTION_SECONDS = 25;
-  const FITB_TOTAL_QUESTIONS = 25;
+  const FITB_TOTAL_QUESTIONS = 15;
 
   let fitbQuestions = [];   // [{sentence, answer, acceptable}]
   let fitbAnswers = [];     // user-typed answers, same length/order
@@ -734,7 +739,7 @@ Rules:
     btnStart.textContent = 'Generating…';
 
     showStage('fitb');
-    document.getElementById('fitbSentenceBox').innerHTML = '<span class="loading-line">Generating your 25 questions…</span>';
+    document.getElementById('fitbSentenceBox').innerHTML = `<span class="loading-line">Generating your ${FITB_TOTAL_QUESTIONS} questions…</span>`;
     document.getElementById('fitbAnswerInput').value = '';
 
     try {
@@ -743,13 +748,13 @@ Rules:
       fitbAnswers = new Array(fitbQuestions.length).fill('');
       fitbIndex = 0;
       btnStart.disabled = false;
-      btnStart.textContent = 'Generate 25 blanks & start';
+      btnStart.textContent = 'Generate 15 blanks & start';
       showFitbQuestion();
     } catch (err) {
       showStage('setup');
       setError(document.getElementById('setupError'), err.message);
       btnStart.disabled = false;
-      btnStart.textContent = 'Generate 25 blanks & start';
+      btnStart.textContent = 'Generate 15 blanks & start';
     }
   }
 
@@ -832,7 +837,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 
   async function gradeFitb() {
     showStage('scoring');
-    document.getElementById('scoringLoadingText').textContent = 'Checking your 25 answers against context…';
+    document.getElementById('scoringLoadingText').textContent = `Checking your ${FITB_TOTAL_QUESTIONS} answers against context…`;
     setError(document.getElementById('runError'), '');
 
     const apiKey = document.getElementById('apiKey').value.trim();
