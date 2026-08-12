@@ -1,4 +1,4 @@
-(function(){
+(function () {
   const READ_SECONDS = 30;
   const WRITE_SECONDS = 90;
   const RING_CIRC = 2 * Math.PI * 32;
@@ -14,11 +14,11 @@
   const LS_PLAYER_NAME = 'swd_player_name';
 
   let supabase = null;
-  try{
-    if(window.supabase && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY){
+  try {
+    if (window.supabase && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY) {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
-  }catch(e){ supabase = null; }
+  } catch (e) { supabase = null; }
 
   const PREFERRED_DEFAULT_MODEL = 'openai/gpt-oss-120b';
   // Model ids that exist on Groq but aren't plain chat models (audio, moderation, TTS, etc.)
@@ -55,23 +55,23 @@
   const HISTORY_CAP = 25;
   const TOPIC_HISTORY_CAP = Math.max(3, Math.ceil(NQT_TOPICS.length * 0.6));
 
-  function loadJSONList(key){
-    try{
+  function loadJSONList(key) {
+    try {
       const raw = localStorage.getItem(key);
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
-    }catch(e){ return []; }
+    } catch (e) { return []; }
   }
-  function saveJSONList(key, arr, cap){
-    try{ localStorage.setItem(key, JSON.stringify(arr.slice(-cap))); }catch(e){ /* storage unavailable, ignore */ }
+  function saveJSONList(key, arr, cap) {
+    try { localStorage.setItem(key, JSON.stringify(arr.slice(-cap))); } catch (e) { /* storage unavailable, ignore */ }
   }
-  function normalizeForCompare(text){
-    return text.toLowerCase().replace(/[^a-z0-9\s]/g,'').trim().split(/\s+/).slice(0,20).join(' ');
+  function normalizeForCompare(text) {
+    return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().split(/\s+/).slice(0, 20).join(' ');
   }
-  function pickRandomTopic(){
+  function pickRandomTopic() {
     const usedTopics = loadJSONList(LS_USED_TOPICS);
     let pool = NQT_TOPICS.filter(t => !usedTopics.includes(t));
-    if(!pool.length) pool = NQT_TOPICS.slice(); // exhausted — reset the cycle
+    if (!pool.length) pool = NQT_TOPICS.slice(); // exhausted — reset the cycle
     const topic = pool[Math.floor(Math.random() * pool.length)];
     const updated = usedTopics.filter(t => t !== topic);
     updated.push(topic);
@@ -88,16 +88,16 @@
     fitb: document.getElementById('stage-fitb'),
     fitbResult: document.getElementById('stage-fitb-result'),
   };
-  function showStage(name){
+  function showStage(name) {
     Object.values(stages).forEach(s => s.classList.remove('active'));
     stages[name].classList.add('active');
-    if(name === 'reading'){
+    if (name === 'reading') {
       document.body.classList.add('reading-active');
     } else {
       document.body.classList.remove('reading-active');
     }
     const hintsBox = document.getElementById('hintsBox');
-    if(name === 'writing'){
+    if (name === 'writing') {
       hintsBox.classList.add('visible');
     } else {
       hintsBox.classList.remove('visible');
@@ -108,20 +108,20 @@
   let currentTopic = '';
   let readInterval = null, writeInterval = null;
 
-  function setError(el, msg){
+  function setError(el, msg) {
     el.textContent = msg;
     el.style.display = msg ? 'block' : 'none';
   }
 
   // ---- fetch the current chat-capable model list for this key ----
-  async function fetchModels(apiKey){
+  async function fetchModels(apiKey) {
     const res = await fetch(GROQ_MODELS_URL, {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${apiKey}` }
     });
-    if(!res.ok){
+    if (!res.ok) {
       let detail = '';
-      try{ const j = await res.json(); detail = j.error?.message || ''; }catch(e){}
+      try { const j = await res.json(); detail = j.error?.message || ''; } catch (e) { }
       throw new Error(`Could not load model list (${res.status}). ${detail}`);
     }
     const data = await res.json();
@@ -129,7 +129,7 @@
       .map(m => m.id)
       .filter(id => id && !MODEL_ID_EXCLUDE.test(id))
       .sort();
-    if(!ids.length) throw new Error('No chat models available on this key.');
+    if (!ids.length) throw new Error('No chat models available on this key.');
     return ids;
   }
 
@@ -138,20 +138,20 @@
   const reloadModelsLink = document.getElementById('reloadModels');
   let modelsLoadedForKey = '';
 
-  async function loadModelsIntoSelect(){
+  async function loadModelsIntoSelect() {
     const apiKey = apiKeyInput.value.trim();
     setError(document.getElementById('setupError'), '');
-    if(!apiKey){
+    if (!apiKey) {
       modelSelect.disabled = true;
       modelSelect.innerHTML = '<option value="">Enter API key, then load models →</option>';
       modelsLoadedForKey = '';
       return;
     }
-    if(apiKey === modelsLoadedForKey) return; // already loaded for this exact key
+    if (apiKey === modelsLoadedForKey) return; // already loaded for this exact key
 
     modelSelect.disabled = true;
     modelSelect.innerHTML = '<option value="">Loading models…</option>';
-    try{
+    try {
       const ids = await fetchModels(apiKey);
       modelSelect.innerHTML = '';
       ids.forEach(id => {
@@ -160,12 +160,12 @@
         opt.textContent = id;
         modelSelect.appendChild(opt);
       });
-      if(ids.includes(PREFERRED_DEFAULT_MODEL)){
+      if (ids.includes(PREFERRED_DEFAULT_MODEL)) {
         modelSelect.value = PREFERRED_DEFAULT_MODEL;
       }
       modelSelect.disabled = false;
       modelsLoadedForKey = apiKey;
-    }catch(err){
+    } catch (err) {
       modelSelect.innerHTML = '<option value="">Could not load models</option>';
       modelSelect.disabled = true;
       modelsLoadedForKey = '';
@@ -180,7 +180,7 @@
   });
 
   // ---- Groq chat completions call (OpenAI-compatible schema) ----
-  async function callGroq(apiKey, model, prompt){
+  async function callGroq(apiKey, model, prompt) {
     const res = await fetch(GROQ_CHAT_URL, {
       method: 'POST',
       headers: {
@@ -192,33 +192,33 @@
         messages: [{ role: 'user', content: prompt }]
       })
     });
-    if(!res.ok){
+    if (!res.ok) {
       let detail = '';
-      try{ const j = await res.json(); detail = j.error?.message || ''; }catch(e){}
+      try { const j = await res.json(); detail = j.error?.message || ''; } catch (e) { }
       throw new Error(`Groq request failed (${res.status}). ${detail}`);
     }
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content || '';
-    if(!text) throw new Error('Empty response from Groq.');
+    if (!text) throw new Error('Empty response from Groq.');
     return text.trim();
   }
 
-  function stripFences(text){
-    return text.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  function stripFences(text) {
+    return text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
   }
 
   // ---- ring helpers ----
-  function initRing(progressEl){
+  function initRing(progressEl) {
     progressEl.setAttribute('stroke-dasharray', RING_CIRC);
     progressEl.setAttribute('stroke-dashoffset', 0);
   }
-  function updateRing(progressEl, numEl, wrapEl, remaining, total){
+  function updateRing(progressEl, numEl, wrapEl, remaining, total) {
     const frac = remaining / total;
     progressEl.setAttribute('stroke-dashoffset', RING_CIRC * (1 - frac));
     numEl.textContent = remaining;
-    wrapEl.classList.remove('warn','critical');
-    if(remaining <= Math.ceil(total*0.15)) wrapEl.classList.add('critical');
-    else if(remaining <= Math.ceil(total*0.4)) wrapEl.classList.add('warn');
+    wrapEl.classList.remove('warn', 'critical');
+    if (remaining <= Math.ceil(total * 0.15)) wrapEl.classList.add('critical');
+    else if (remaining <= Math.ceil(total * 0.4)) wrapEl.classList.add('warn');
   }
 
   initRing(document.getElementById('readRingProgress'));
@@ -227,7 +227,7 @@
 
   // ---- populate topic dropdown ----
   const topicSelect = document.getElementById('topic');
-  (function populateTopics(){
+  (function populateTopics() {
     const randomOpt = document.createElement('option');
     randomOpt.value = RANDOM_VALUE;
     randomOpt.textContent = '🎲 Random (recommended)';
@@ -245,7 +245,7 @@
   let currentMode = 'rewrite';
   const modeTabRewrite = document.getElementById('modeTabRewrite');
   const modeTabFitb = document.getElementById('modeTabFitb');
-  function setMode(mode){
+  function setMode(mode) {
     currentMode = mode;
     modeTabRewrite.classList.toggle('active', mode === 'rewrite');
     modeTabFitb.classList.toggle('active', mode === 'fitb');
@@ -258,27 +258,27 @@
   // ---- flow ----
   const btnStart = document.getElementById('btnStart');
   btnStart.addEventListener('click', () => {
-    if(currentMode === 'fitb') startFitbDrill();
+    if (currentMode === 'fitb') startFitbDrill();
     else startDrill();
   });
 
-  function buildGenPrompt(topic, avoidList){
+  function buildGenPrompt(topic, avoidList) {
     const avoidBlock = avoidList.length
-      ? `\n\nDo NOT reuse any of these passages you (or another request) already generated for this reader — write something with a genuinely different angle, examples, and opening sentence, even if the topic is the same:\n${avoidList.map((p,i) => `${i+1}. """${p}"""`).join('\n')}`
+      ? `\n\nDo NOT reuse any of these passages you (or another request) already generated for this reader — write something with a genuinely different angle, examples, and opening sentence, even if the topic is the same:\n${avoidList.map((p, i) => `${i + 1}. """${p}"""`).join('\n')}`
       : '';
     return `You are creating practice material for the TCS NQT exam's "Rewrite Passage" round. Write a single self-contained paragraph of 100-130 words on the topic of "${topic}". Make it moderately formal, information-dense with 4-6 distinct factual or logical points a reader would need to recall, written in clear complete sentences with a brief opening/context sentence, a body of key points, and a short concluding sentence that wraps up the idea. Also remember that the reader only has 30 seconds to read the complete paragraph so it caanot be longer than 5-6 lines. Output ONLY the paragraph text — no title, no quotes, no preamble, no markdown.${avoidBlock}`;
   }
 
-  async function generateUniquePassage(apiKey, model, topic){
+  async function generateUniquePassage(apiKey, model, topic) {
     const used = loadJSONList(LS_USED_PASSAGES);
     const usedNormalized = used.map(normalizeForCompare);
     const avoidList = used.slice(-5); // keep the prompt short — last 5 is plenty of signal
 
     const MAX_ATTEMPTS = 3;
     let passage = '';
-    for(let attempt = 0; attempt < MAX_ATTEMPTS; attempt++){
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       passage = await callGroq(apiKey, model, buildGenPrompt(topic, avoidList));
-      if(!usedNormalized.includes(normalizeForCompare(passage))) break;
+      if (!usedNormalized.includes(normalizeForCompare(passage))) break;
       // duplicate of something this user already saw — try again
     }
 
@@ -287,17 +287,17 @@
     return passage;
   }
 
-  async function startDrill(){
+  async function startDrill() {
     const apiKey = document.getElementById('apiKey').value.trim();
     const topicValue = document.getElementById('topic').value;
     const model = document.getElementById('model').value;
     setError(document.getElementById('setupError'), '');
 
-    if(!apiKey){
+    if (!apiKey) {
       setError(document.getElementById('setupError'), 'Enter your Groq API key first.');
       return;
     }
-    if(!model){
+    if (!model) {
       setError(document.getElementById('setupError'), 'Load and pick a model first (click "reload list" if it hasn\'t loaded).');
       return;
     }
@@ -312,12 +312,12 @@
     document.getElementById('passageBox').classList.remove('blurred');
     document.getElementById('passageBox').innerHTML = '<span class="loading-line">Generating your passage…</span>';
 
-    try{
+    try {
       const passage = await generateUniquePassage(apiKey, model, topic);
       originalPassage = passage;
       document.getElementById('passageBox').textContent = passage;
       runReadTimer();
-    }catch(err){
+    } catch (err) {
       showStage('setup');
       setError(document.getElementById('setupError'), err.message);
       btnStart.disabled = false;
@@ -325,7 +325,7 @@
     }
   }
 
-  function runReadTimer(){
+  function runReadTimer() {
     let remaining = READ_SECONDS;
     const progressEl = document.getElementById('readRingProgress');
     const numEl = document.getElementById('readRingNum');
@@ -334,20 +334,20 @@
 
     readInterval = setInterval(() => {
       remaining--;
-      updateRing(progressEl, numEl, wrapEl, Math.max(remaining,0), READ_SECONDS);
-      if(remaining <= 0){
+      updateRing(progressEl, numEl, wrapEl, Math.max(remaining, 0), READ_SECONDS);
+      if (remaining <= 0) {
         clearInterval(readInterval);
         beginWriting();
       }
     }, 1000);
   }
 
-  function extractKeywords(passage){
+  function extractKeywords(passage) {
     const words = passage.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'']/g, "").split(/\s+/);
     const stopwords = new Set([
-      'the', 'and', 'that', 'with', 'from', 'this', 'these', 'their', 'there', 'about', 
-      'which', 'would', 'should', 'could', 'their', 'they', 'them', 'will', 'have', 'has', 
-      'had', 'been', 'were', 'was', 'are', 'context', 'passage', 'candidate', 'original', 
+      'the', 'and', 'that', 'with', 'from', 'this', 'these', 'their', 'there', 'about',
+      'which', 'would', 'should', 'could', 'their', 'they', 'them', 'will', 'have', 'has',
+      'had', 'been', 'were', 'was', 'are', 'context', 'passage', 'candidate', 'original',
       'topic', 'first', 'second', 'third', 'after', 'before', 'between', 'under', 'through',
       'during', 'without', 'because', 'although', 'though', 'since', 'until', 'while'
     ]);
@@ -355,19 +355,19 @@
     const seen = new Set();
     words.forEach(w => {
       const clean = w.toLowerCase().trim();
-      if(clean.length >= 6 && !stopwords.has(clean) && !seen.has(clean) && !/^\d+$/.test(clean)){
+      if (clean.length >= 6 && !stopwords.has(clean) && !seen.has(clean) && !/^\d+$/.test(clean)) {
         seen.add(clean);
         candidates.push(w);
       }
     });
     candidates.sort((a, b) => b.length - a.length);
-    while(candidates.length < 3){
+    while (candidates.length < 3) {
       candidates.push('NQT Drill');
     }
     return candidates.slice(0, 3);
   }
 
-  function beginWriting(){
+  function beginWriting() {
     showStage('writing');
     const ta = document.getElementById('rewriteInput');
     ta.value = '';
@@ -399,37 +399,37 @@
 
     writeInterval = setInterval(() => {
       remaining--;
-      updateRing(progressEl, numEl, wrapEl, Math.max(remaining,0), WRITE_SECONDS);
-      
+      updateRing(progressEl, numEl, wrapEl, Math.max(remaining, 0), WRITE_SECONDS);
+
       // Reveal keywords based on remaining time (total: 90s)
       // 30s elapsed -> remaining = 60s
-      if(remaining === 60){
+      if (remaining === 60) {
         hintsBox.classList.add('visible');
         hint1.textContent = keywords[0];
         hint1.classList.add('reveal');
       }
       // 45s elapsed -> remaining = 45s
-      if(remaining === 45){
+      if (remaining === 45) {
         hint2.textContent = keywords[1];
         hint2.classList.add('reveal');
       }
       // 60s elapsed -> remaining = 30s
-      if(remaining === 30){
+      if (remaining === 30) {
         hint3.textContent = keywords[2];
         hint3.classList.add('reveal');
       }
 
-      if(remaining <= 0){
+      if (remaining <= 0) {
         clearInterval(writeInterval);
         finishWriting();
       }
     }, 1000);
   }
 
-  function updateWordCount(){
+  function updateWordCount() {
     const val = document.getElementById('rewriteInput').value.trim();
     const count = val ? val.split(/\s+/).length : 0;
-    document.getElementById('wordCount').textContent = `${count} word${count===1?'':'s'}`;
+    document.getElementById('wordCount').textContent = `${count} word${count === 1 ? '' : 's'}`;
   }
 
   document.getElementById('btnGiveUp').addEventListener('click', () => {
@@ -437,7 +437,7 @@
     finishWriting();
   });
 
-  async function finishWriting(){
+  async function finishWriting() {
     const rewrite = document.getElementById('rewriteInput').value.trim();
     showStage('scoring');
     setError(document.getElementById('runError'), '');
@@ -463,20 +463,20 @@ Score the rewrite strictly on:
 Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact shape:
 {"score": <number>, "vocabulary_relevancy": <number>, "sentence_completeness": <number>, "content_coverage": <number>, "structure": <number>, "feedback": "<2-3 sentence constructive feedback, direct and specific>", "missed_points": ["<short phrase>", "<short phrase>"]}`;
 
-    try{
+    try {
       const raw = await callGroq(apiKey, model, scorePrompt);
       const json = JSON.parse(stripFences(raw));
       renderResult(json, rewrite);
-    }catch(err){
+    } catch (err) {
       showStage('result');
       document.getElementById('scoreNum').textContent = '–';
       setError(document.getElementById('runError'), 'Could not grade this attempt: ' + err.message);
     }
   }
 
-  function pct(v){ return Math.max(0, Math.min(100, (v/10)*100)); }
+  function pct(v) { return Math.max(0, Math.min(100, (v / 10) * 100)); }
 
-  function renderResult(json, rewrite){
+  function renderResult(json, rewrite) {
     showStage('result');
     setError(document.getElementById('runError'), '');
 
@@ -485,10 +485,10 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
     document.getElementById('mSentence').textContent = json.sentence_completeness ?? '–';
     document.getElementById('mCoverage').textContent = json.content_coverage ?? '–';
     document.getElementById('mStructure').textContent = json.structure ?? '–';
-    document.getElementById('barVocab').style.width = pct(json.vocabulary_relevancy||0) + '%';
-    document.getElementById('barSentence').style.width = pct(json.sentence_completeness||0) + '%';
-    document.getElementById('barCoverage').style.width = pct(json.content_coverage||0) + '%';
-    document.getElementById('barStructure').style.width = pct(json.structure||0) + '%';
+    document.getElementById('barVocab').style.width = pct(json.vocabulary_relevancy || 0) + '%';
+    document.getElementById('barSentence').style.width = pct(json.sentence_completeness || 0) + '%';
+    document.getElementById('barCoverage').style.width = pct(json.content_coverage || 0) + '%';
+    document.getElementById('barStructure').style.width = pct(json.structure || 0) + '%';
 
     const wc = rewrite ? rewrite.trim().split(/\s+/).filter(Boolean).length : 0;
     document.getElementById('mWords').textContent = wc;
@@ -515,9 +515,9 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
     };
     currentAttemptPosted = false;
     loadLeaderboard();
-    if(localStorage.getItem(LS_PLAYER_NAME)){
+    if (localStorage.getItem(LS_PLAYER_NAME)) {
       submitScore(true);
-    }else{
+    } else {
       setLbStatus('Enter your name below to join the leaderboard — future scores post automatically.');
     }
   }
@@ -530,51 +530,51 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 
   playerNameInput.value = localStorage.getItem(LS_PLAYER_NAME) || '';
 
-  function setLbStatus(msg, cls){
+  function setLbStatus(msg, cls) {
     lbStatus.textContent = msg;
     lbStatus.className = 'lb-status' + (cls ? ' ' + cls : '');
   }
 
-  function renderLeaderboardHtml(html){
+  function renderLeaderboardHtml(html) {
     lbLists.forEach(el => { el.innerHTML = html; });
   }
 
-  async function loadLeaderboard(){
-    if(!supabase){
+  async function loadLeaderboard() {
+    if (!supabase) {
       renderLeaderboardHtml('<div class="lb-empty">Leaderboard not configured yet.</div>');
       return;
     }
     renderLeaderboardHtml('<div class="lb-empty">Loading leaderboard…</div>');
-    try{
+    try {
       const { data, error } = await supabase
         .from('leaderboard_stats')
         .select('name, attempts, total_score, avg_score')
         .order('avg_score', { ascending: false })
         .limit(10);
-      if(error) throw error;
-      if(!data || !data.length){
+      if (error) throw error;
+      if (!data || !data.length) {
         renderLeaderboardHtml('<div class="lb-empty">No scores posted yet — be the first.</div>');
         return;
       }
       const html = data.map((row, i) => `
         <div class="lb-row">
           <div class="lb-row-main">
-            <span class="lb-rank">#${i+1}</span>
+            <span class="lb-rank">#${i + 1}</span>
             <span class="lb-name">${escapeHtml(row.name)}</span>
             <span class="lb-score">${Number(row.avg_score).toFixed(2)} <small>avg</small></span>
           </div>
-          <div class="lb-sub">${row.attempts} attempt${row.attempts===1?'':'s'} · total ${Number(row.total_score).toFixed(1)}</div>
+          <div class="lb-sub">${row.attempts} attempt${row.attempts === 1 ? '' : 's'} · total ${Number(row.total_score).toFixed(1)}</div>
         </div>
       `).join('');
       renderLeaderboardHtml(html);
-    }catch(err){
+    } catch (err) {
       renderLeaderboardHtml('<div class="lb-empty">Could not load leaderboard.</div>');
     }
   }
 
   loadLeaderboard();
 
-  function escapeHtml(str){
+  function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
     return div.innerHTML;
@@ -583,20 +583,20 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
   let lastResultForSubmit = null;
   let currentAttemptPosted = false;
 
-  async function submitScore(auto){
+  async function submitScore(auto) {
     const typedName = playerNameInput.value.trim();
     const name = typedName || localStorage.getItem(LS_PLAYER_NAME) || '';
 
-    if(!name){
-      if(!auto) setLbStatus('Enter a name first, then post.', 'err');
+    if (!name) {
+      if (!auto) setLbStatus('Enter a name first, then post.', 'err');
       else setLbStatus('Enter your name below to join the leaderboard — future scores post automatically.');
       return;
     }
-    if(!supabase){
-      if(!auto) setLbStatus('Leaderboard not configured yet.', 'err');
+    if (!supabase) {
+      if (!auto) setLbStatus('Leaderboard not configured yet.', 'err');
       return;
     }
-    if(!lastResultForSubmit || currentAttemptPosted){
+    if (!lastResultForSubmit || currentAttemptPosted) {
       return;
     }
 
@@ -604,7 +604,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
     playerNameInput.value = name;
     btnSubmitScore.disabled = true;
     setLbStatus(auto ? 'Posting your score…' : 'Posting…');
-    try{
+    try {
       const { error } = await supabase.from('scores').insert({
         name: name,
         topic: currentTopic || 'general',
@@ -615,20 +615,20 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
         structure: lastResultForSubmit.structure ?? null,
         words_written: lastResultForSubmit.wordsWritten ?? null,
       });
-      if(error) throw error;
+      if (error) throw error;
       currentAttemptPosted = true;
       setLbStatus(`Posted automatically as ${name}.`, 'ok');
       loadLeaderboard();
-    }catch(err){
+    } catch (err) {
       setLbStatus('Could not post score: ' + err.message, 'err');
-    }finally{
+    } finally {
       btnSubmitScore.disabled = false;
     }
   }
 
   btnSubmitScore.addEventListener('click', () => submitScore(false));
 
-  document.getElementById('compareToggle').addEventListener('click', function(){
+  document.getElementById('compareToggle').addEventListener('click', function () {
     const box = document.getElementById('compareBox');
     box.classList.toggle('show');
     this.textContent = box.classList.contains('show') ? 'hide original vs. your rewrite' : 'show original vs. your rewrite';
@@ -689,7 +689,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
   let fitbIndex = 0;
   let fitbInterval = null;
 
-  function buildFitbGenPrompt(topic){
+  function buildFitbGenPrompt(topic) {
     return `Generate exactly ${FITB_TOTAL_QUESTIONS} sentences for a TCS NQT "Fill in the Blank" verbal ability drill on the general theme of "${topic}" (vary the specific subject matter of each sentence — don't make every sentence literally about the theme, just keep them plausible NQT verbal-ability sentences). This year's format removed the original multiple-choice options, so the candidate must infer the missing word purely from context.
 
 For each sentence, remove exactly one contextually important word or short phrase (an adjective, verb, connector, or noun whose identity must be inferred from the surrounding meaning) and mark its position with "____" (four underscores).
@@ -706,24 +706,24 @@ Rules:
 - Each sentence is 12-24 words, one line, moderately formal register.`;
   }
 
-  async function generateFitbQuestions(apiKey, model, topic){
+  async function generateFitbQuestions(apiKey, model, topic) {
     const raw = await callGroq(apiKey, model, buildFitbGenPrompt(topic));
     const parsed = JSON.parse(stripFences(raw));
-    if(!Array.isArray(parsed) || !parsed.length) throw new Error('Model did not return any questions.');
+    if (!Array.isArray(parsed) || !parsed.length) throw new Error('Model did not return any questions.');
     return parsed.filter(q => q && typeof q.sentence === 'string' && q.sentence.includes('____'));
   }
 
-  async function startFitbDrill(){
+  async function startFitbDrill() {
     const apiKey = document.getElementById('apiKey').value.trim();
     const topicValue = document.getElementById('topic').value;
     const model = document.getElementById('model').value;
     setError(document.getElementById('setupError'), '');
 
-    if(!apiKey){
+    if (!apiKey) {
       setError(document.getElementById('setupError'), 'Enter your Groq API key first.');
       return;
     }
-    if(!model){
+    if (!model) {
       setError(document.getElementById('setupError'), 'Load and pick a model first (click "reload list" if it hasn\'t loaded).');
       return;
     }
@@ -737,15 +737,15 @@ Rules:
     document.getElementById('fitbSentenceBox').innerHTML = '<span class="loading-line">Generating your 25 questions…</span>';
     document.getElementById('fitbAnswerInput').value = '';
 
-    try{
+    try {
       fitbQuestions = await generateFitbQuestions(apiKey, model, topic);
-      if(fitbQuestions.length < 5) throw new Error('Not enough usable questions came back — try again.');
+      if (fitbQuestions.length < 5) throw new Error('Not enough usable questions came back — try again.');
       fitbAnswers = new Array(fitbQuestions.length).fill('');
       fitbIndex = 0;
       btnStart.disabled = false;
       btnStart.textContent = 'Generate 25 blanks & start';
       showFitbQuestion();
-    }catch(err){
+    } catch (err) {
       showStage('setup');
       setError(document.getElementById('setupError'), err.message);
       btnStart.disabled = false;
@@ -753,13 +753,13 @@ Rules:
     }
   }
 
-  function renderFitbSentence(sentence){
+  function renderFitbSentence(sentence) {
     const parts = sentence.split('____');
     const box = document.getElementById('fitbSentenceBox');
     box.innerHTML = '';
     parts.forEach((part, i) => {
       box.appendChild(document.createTextNode(part));
-      if(i < parts.length - 1){
+      if (i < parts.length - 1) {
         const span = document.createElement('span');
         span.className = 'blank-marker';
         span.textContent = '____';
@@ -768,7 +768,7 @@ Rules:
     });
   }
 
-  function showFitbQuestion(){
+  function showFitbQuestion() {
     clearInterval(fitbInterval);
     const q = fitbQuestions[fitbIndex];
     document.getElementById('fitbProgressLabel').textContent = `Question ${fitbIndex + 1} of ${fitbQuestions.length}`;
@@ -787,17 +787,17 @@ Rules:
     fitbInterval = setInterval(() => {
       remaining--;
       updateRing(progressEl, numEl, wrapEl, Math.max(remaining, 0), FITB_QUESTION_SECONDS);
-      if(remaining <= 0){
+      if (remaining <= 0) {
         clearInterval(fitbInterval);
         advanceFitb();
       }
     }, 1000);
   }
 
-  function advanceFitb(){
+  function advanceFitb() {
     fitbAnswers[fitbIndex] = document.getElementById('fitbAnswerInput').value.trim();
     fitbIndex++;
-    if(fitbIndex < fitbQuestions.length){
+    if (fitbIndex < fitbQuestions.length) {
       showFitbQuestion();
     } else {
       gradeFitb();
@@ -809,14 +809,14 @@ Rules:
     advanceFitb();
   });
   document.getElementById('fitbAnswerInput').addEventListener('keydown', e => {
-    if(e.key === 'Enter'){
+    if (e.key === 'Enter') {
       e.preventDefault();
       clearInterval(fitbInterval);
       advanceFitb();
     }
   });
 
-  function buildFitbGradePrompt(items){
+  function buildFitbGradePrompt(items) {
     return `You are grading a candidate's attempt at a TCS NQT-style "Fill in the Blank" contextual vocabulary round. For each item, the candidate had ${FITB_QUESTION_SECONDS} seconds to read one sentence with a missing word and type the missing word/phrase purely from context — no options were given.
 
 Mark an answer correct if it fits the sentence's meaning and grammar well — matching the original "answer", one of the "acceptable" alternatives, or any other word/phrase you judge genuinely fits the context and part of speech, even if not listed. Be lenient on minor spelling slips but strict on wrong meaning, wrong part of speech, or a blank left empty.
@@ -830,7 +830,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 "results" must contain exactly ${items.length} items, in the same order as ITEMS.`;
   }
 
-  async function gradeFitb(){
+  async function gradeFitb() {
     showStage('scoring');
     document.getElementById('scoringLoadingText').textContent = 'Checking your 25 answers against context…';
     setError(document.getElementById('runError'), '');
@@ -845,18 +845,18 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
       userAnswer: fitbAnswers[i] || ''
     }));
 
-    try{
+    try {
       const raw = await callGroq(apiKey, model, buildFitbGradePrompt(items));
       const json = JSON.parse(stripFences(raw));
       renderFitbResult(json, items);
-    }catch(err){
+    } catch (err) {
       showStage('setup');
       setMode('fitb');
       setError(document.getElementById('setupError'), 'Could not grade this set: ' + err.message);
     }
   }
 
-  function renderFitbResult(json, items){
+  function renderFitbResult(json, items) {
     showStage('fitbResult');
 
     const results = Array.isArray(json.results) ? json.results : [];
@@ -865,7 +865,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 
     const feedbackBox = document.getElementById('fitbFeedbackBox');
     const feedbackText = document.getElementById('fitbFeedbackText');
-    if(json.overall_feedback){
+    if (json.overall_feedback) {
       feedbackText.textContent = json.overall_feedback;
       feedbackBox.style.display = 'block';
     } else {
@@ -900,7 +900,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
       yourAnswerEl.append('Your answer: ', yourAnswerB);
       div.appendChild(yourAnswerEl);
 
-      if(!correct && r.note){
+      if (!correct && r.note) {
         const noteEl = document.createElement('div');
         noteEl.className = 'fitb-note';
         noteEl.textContent = r.note;
