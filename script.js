@@ -694,20 +694,48 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
   let fitbIndex = 0;
   let fitbInterval = null;
 
-  function buildFitbGenPrompt(topic) {
-    return `Generate exactly ${FITB_TOTAL_QUESTIONS} sentences for a TCS NQT "Fill in the Blank" verbal ability drill on the general theme of "${topic}" (vary the specific subject matter of each sentence — don't make every sentence literally about the theme, just keep them plausible NQT verbal-ability sentences). This year's format removed the original multiple-choice options, so the candidate must infer the missing word purely from context.
+  // Cycle of parts of speech to force onto the blanked word, one per item —
+  // stops the model from defaulting to "X's manner was ____" adjective sentences every time.
+  const FITB_POS_CYCLE = ['adjective', 'verb', 'noun', 'adverb', 'connector/preposition'];
 
-For each sentence, remove exactly one contextually important word or short phrase (an adjective, verb, connector, or noun whose identity must be inferred from the surrounding meaning) and mark its position with "____" (four underscores).
+  function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildFitbGenPrompt(topic) {
+    // Assign each item its own topic domain (distinct, cycling through NQT_TOPICS if needed)
+    // and its own required part-of-speech for the blank, so variety is enforced structurally
+    // instead of left to the model's discretion.
+    const topicPool = shuffleArray(NQT_TOPICS.filter(t => t !== topic));
+    const itemSpecs = [];
+    for (let i = 0; i < FITB_TOTAL_QUESTIONS; i++) {
+      const domain = i === 0 ? topic : topicPool[(i - 1) % topicPool.length];
+      const pos = FITB_POS_CYCLE[i % FITB_POS_CYCLE.length];
+      const article = /^[aeiou]/i.test(pos) ? 'an' : 'a';
+      itemSpecs.push(`${i + 1}. Topic domain: "${domain}" — blanked word must be ${article} ${pos}.`);
+    }
+
+    return `Generate exactly ${FITB_TOTAL_QUESTIONS} sentences for a TCS NQT "Fill in the Blank" verbal ability drill. This year's format removed the original multiple-choice options, so the candidate must infer the missing word purely from context.
+
+Each item below has its own required topic domain and its own required part of speech for the blank. Follow this list exactly, one sentence per line item — do NOT write every sentence about a person's attitude, manner, tone, or personality; that pattern is banned unless the item's topic domain explicitly calls for it:
+${itemSpecs.join('\n')}
+
+For each sentence, remove exactly one contextually important word or short phrase matching that item's required part of speech, and mark its position with "____" (four underscores).
 
 Return ONLY valid JSON, no markdown fences, no commentary, in this exact shape:
-[{"sentence": "The panel was impressed by the candidate's ____ approach to the case study.", "answer": "meticulous", "acceptable": ["thorough", "careful", "rigorous"]}, ...]
+[{"sentence": "The new environmental policy will ____ into force next quarter, affecting all manufacturing plants.", "answer": "come", "acceptable": ["take effect", "enter"]}, ...]
 
 Rules:
-- Exactly ${FITB_TOTAL_QUESTIONS} items in the array, no more, no fewer.
-- "sentence" contains exactly one "____" marker.
+- Exactly ${FITB_TOTAL_QUESTIONS} items in the array, in the same order as the numbered list above, no more, no fewer.
+- "sentence" contains exactly one "____" marker, and the blanked word/phrase must be the part of speech specified for that item.
 - "answer" is the single best original word or short phrase.
 - "acceptable" lists 2-4 other words/phrases that would also fit the context correctly.
-- Vary sentence topics, structures, and blanked part-of-speech across all ${FITB_TOTAL_QUESTIONS} items — no repeated sentences or near-duplicates.
+- No two sentences may share a similar structure, subject, or opening words — each must read as a standalone sentence about its assigned topic domain, not a person's demeanor.
 - Each sentence is 12-24 words, one line, moderately formal register.`;
   }
 
