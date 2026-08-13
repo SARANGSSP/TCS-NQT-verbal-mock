@@ -696,7 +696,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 
   // Cycle of parts of speech to force onto the blanked word, one per item —
   // stops the model from defaulting to "X's manner was ____" adjective sentences every time.
-  const FITB_POS_CYCLE = ['adjective', 'verb', 'noun', 'adverb', 'connector/preposition'];
+  const FITB_POS_CYCLE = ['adjective', 'verb', 'noun', 'adverb'];
 
   function shuffleArray(arr) {
     const a = arr.slice();
@@ -722,7 +722,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary, in this exact s
 
     return `Generate exactly ${FITB_TOTAL_QUESTIONS} sentences for a TCS NQT "Fill in the Blank" verbal ability drill. This year's official format removed the original multiple-choice options, so the candidate must infer the missing word purely from context.
 
-Real TCS NQT verbal ability questions use formal, professional-level vocabulary common in everyday business and academic writing — NOT obscure literary or dramatic words. A candidate should be able to solve each one in 20-30 seconds by predicting the word from context alone, the way they'd encounter it in a workplace email, report, or meeting.
+Real TCS NQT verbal ability questions sit at MODERATE difficulty — not GRE-level, not literary. The actual exam pulls from a pool of words that are "neither common enough to guess nor obscure enough to be unfair": everyday professional vocabulary a graduate fresher would already recognize from workplace emails, news headlines, or textbooks, just applied precisely. A candidate should be able to solve each one in 20-30 seconds by predicting the word from context alone.
 
 Match the vocabulary difficulty and register of these reference examples — each blank has exactly one precise, decisive word the context clearly demands (not a vague filler word like "errors," "calm," or "simple," but also not an overly rare or theatrical word):
 - "The company decided to ____ its operations to cut costs." → streamline
@@ -730,6 +730,8 @@ Match the vocabulary difficulty and register of these reference examples — eac
 - "The two companies decided to ____ forces to compete with larger rivals." → join
 - "The manager had to ____ several tasks to junior staff after taking on the new client account." → delegate
 - "Rising fuel costs are expected to ____ profit margins across the logistics industry this quarter." → squeeze
+
+Do NOT reach for words like these — they are a full tier too hard for this exam, even though they'd technically fit the context: "notwithstanding," "ameliorate," "obfuscate," "perfunctory," "recalcitrant," "ephemeral," "exacerbate," "circumvent," "ubiquitous," "juxtapose." If the natural word you'd pick sounds like a GRE flashcard, replace it with the plainer professional word a fresher would actually use.
 
 Each item below has its own required topic domain and its own required part of speech for the blank. Follow this list exactly, one sentence per line item — do NOT write every sentence about a person's attitude, manner, tone, or personality; that pattern is banned unless the item's topic domain explicitly calls for it:
 ${itemSpecs.join('\n')}
@@ -743,6 +745,7 @@ Rules:
 - Exactly ${FITB_TOTAL_QUESTIONS} items in the array, in the same order as the numbered list above, no more, no fewer.
 - "sentence" contains exactly one "____" marker, and the blanked word/phrase must be the part of speech specified for that item.
 - "answer" is the single best original word or short phrase — specific and decisive, not a generic filler word a candidate could guess without reading the sentence, and not an obscure/literary word outside everyday professional vocabulary.
+- Every "answer" across all ${FITB_TOTAL_QUESTIONS} items must be a completely different word — no repeats and no reusing the same word in a different tense/form (e.g. "manage" and "managed" both count as the same word). Also don't let an "answer" for one item show up inside another item's "acceptable" list. Track the words you've already used as you go and pick a fresh one each time.
 - "acceptable" lists 2-4 other words/phrases that would also fit the context correctly.
 - No two sentences may share a similar structure, subject, or opening words — each must read as a standalone sentence about its assigned topic domain, not a person's demeanor.
 - Each sentence is 12-24 words, one line, moderately formal register — the kind of sentence you'd read in a workplace email, report, or business news article.`;
@@ -769,7 +772,20 @@ Rules:
         return blankCount === 1 && q.answer.length > 0 && q.sentence.length > 0;
       });
 
-    return clean;
+    // Guardrail: the prompt asks for no repeated answer words, but models don't always
+    // honor that over 15 items — enforce it here too. Normalize each answer to a bare
+    // lowercase word stem (strip trailing -s/-es/-ed/-ing) so "manage" and "managed"
+    // still count as a repeat, and drop any later item whose answer collides.
+    const stem = w => w.toLowerCase().trim().replace(/(ing|ed|es|s)$/i, '');
+    const seenStems = new Set();
+    const deduped = clean.filter(q => {
+      const s = stem(q.answer);
+      if (seenStems.has(s)) return false;
+      seenStems.add(s);
+      return true;
+    });
+
+    return deduped;
   }
 
   async function startFitbDrill() {
